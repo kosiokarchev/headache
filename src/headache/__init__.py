@@ -7,14 +7,13 @@ import textwrap
 import typing as tp
 from itertools import chain, repeat
 
-import astor.source_repr
 import pygccxml
 from astor import to_source
 from frozendict import frozendict
 from more_itertools import lstrip
 from pygccxml import declarations as d
 
-from . import myast as ast
+from . import cutils, myast as ast
 from .cutils import c_enum, CArrayType, CFuncType, CPointerType, CTSignature, CType
 from .doxml import DoXML
 from .utils import tryall, unzip
@@ -185,10 +184,16 @@ class DLLWrapper:
     _printed_types: tp.Dict[CType, str] = {}
 
     def format_docstring(self, docstring):
-        return '\n' + textwrap.indent('\n\n'.join(textwrap.fill(line, self.textwidth - self.tabwidth - 1) for line in docstring.replace('\r', '').split('\n')),
-                                      ' ' * self.tabwidth) + '\n' + ' ' * self.tabwidth
+        return (
+            '\n'
+            + textwrap.indent('\n\n'.join(textwrap.fill(line, self.textwidth - self.tabwidth - 1)
+                                          for line in docstring.replace('\r', '').split('\n')),
+                              ' ' * self.tabwidth)
+            + '\n' + ' ' * self.tabwidth
+        )
 
-    def get_typename(self, typ):
+    @staticmethod
+    def get_typename(typ):
         return f'{typ.__module__}.{typ.__qualname__}'.replace('__main__.', '').replace('builtins.', '')
 
     def print_typename(self, typ) -> ast.expr:
@@ -279,18 +284,9 @@ class DLLWrapper:
         dllname = dllname or os.path.splitext(self.headername)[0]
         mod = ast.Module(body=[
             ast.Import(names=[ast.alias(name='ctypes')]),
-            ast.ImportFrom(module=f'{src.headache.cutils.__name__}', names=[ast.alias(name='c_enum')]),
+            ast.ImportFrom(module=f'{cutils.__name__}', names=[ast.alias(name='c_enum')]),
             ast.assign('__dll', ast.call('ctypes.cdll.LoadLibrary', [ast.Constant(value=dllname)]))
         ] + self.print_defines() + self.print_typedefs() + self.print_functions(dllvar=dllvar))
 
         open(file, 'w').write(to_source(mod))
         return mod
-
-
-if __name__ == '__main__':
-    w = DLLWrapper('edsdk/EDSDK.h', doxml_base='edsdk_xml')
-
-    cache = astor.source_repr.split_lines.__defaults__
-    astor.source_repr.split_lines.__defaults__ = (1000,)
-    w.print('pyedsdk.py')
-    astor.source_repr.split_lines.__defaults__ = cache
