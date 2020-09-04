@@ -8,7 +8,7 @@ import typing as tp
 from itertools import chain, repeat
 
 import pygccxml
-from astor import to_source
+from astor import to_source, source_repr
 from frozendict import frozendict
 from more_itertools import lstrip
 from pygccxml import declarations as d
@@ -16,7 +16,7 @@ from pygccxml import declarations as d
 from . import cutils, myast as ast
 from .cutils import c_enum, CArrayType, CFuncType, CPointerType, CTSignature, CType
 from .doxml import DoXML
-from .utils import tryall, unzip
+from .utils import patch, tryall, unzip
 
 _ctftypes = {key: val for key, val in ct.__dict__.items() if key.startswith('c_')}
 
@@ -39,7 +39,7 @@ class CTyper:
         self.typemap = self.fundamental_typemap.copy()
         self.functions: tp.Dict[str, inspect.Signature] = {}
 
-        self._printed_types = {}
+        self._createed_types = {}
 
     compiler_path = 'C:/Program Files (x86)/Microsoft Visual Studio/2019/BuildTools/VC/Tools/MSVC/14.27.29110/bin/Hostx86/x86/cl.exe'
 
@@ -181,7 +181,7 @@ class DLLWrapper:
         self.textwidth = 80
         self.tabwidth = 4
 
-    _printed_types: tp.Dict[CType, str] = {}
+    _createed_types: tp.Dict[CType, str] = {}
 
     def format_docstring(self, docstring):
         return (
@@ -194,99 +194,124 @@ class DLLWrapper:
 
     @staticmethod
     def get_typename(typ):
-        return f'{typ.__module__}.{typ.__qualname__}'.replace('__main__.', '').replace('builtins.', '')
+        return f'{typ.__module__}.{typ.__qualname__}'.replace(f'{__name__}.', '').replace('builtins.', '')
 
-    def print_typename(self, typ) -> ast.expr:
-        if typ in self._printed_types:
-            return ast.rvalue(self._printed_types[typ])
+    def create_typename(self, typ) -> ast.expr:
+        if typ in self._createed_types:
+            return ast.rvalue(self._createed_types[typ])
         else:
             if issubclass(typ, CFuncType):
                 return ast.call('ctypes.CFUNCTYPE',
-                                list(map(self.print_typename, chain((typ._restype_,), typ._argtypes_))))
+                                list(map(self.create_typename, chain((typ._restype_,), typ._argtypes_))))
             elif issubclass(typ, CPointerType):
-                return ast.call('ctypes.POINTER', [self.print_typename(typ._type_)])
+                return ast.call('ctypes.POINTER', [self.create_typename(typ._type_)])
             elif issubclass(typ, CArrayType):
                 return ast.BinOp(left=ast.Constant(value=typ._length_),
                                  op=ast.Mult(),
-                                 right=self.print_typename(typ._type_))
+                                 right=self.create_typename(typ._type_))
             else:
                 return ast.rvalue(self.get_typename(typ))
 
-    def print_defines(self) -> tp.List[ast.stmt]:
-        return [
-            ast.assign(key, self.print_typename(val) if isinstance(val, type) else ast.Constant(value=val))
-            for key, val in self.typer.defines.items()
-        ]
+    def create_define(self, name: str, value) -> ast.ast.Assign:
+        return ast.assign(name, self.create_typename(value) if isinstance(value, type) else ast.Constant(value=value))
 
-    def print_typedefs(self) -> tp.List[ast.stmt]:
-        self._printed_types = {}
-        self._printed_types = {
+    def create_defines(self) -> tp.List[ast.stmt]:
+        return [self.create_define(key, val) for key, val in self.typer.defines.items()]
+
+    def create_typedef_predefined_base(self, name: str, base: CType):
+        return self.create_define(name, base)
+
+    def create_typedef_struct(self, name: str, ctype: CType):
+        return ast.ClassDef(
+            name=name, bases=[ast.rvalue('ctypes.Structure')],
+            body=[
+                 ast.assign('_fields_', ast.List(
+                     elts=[ast.Tuple(elts=[ast.Constant(value=fname), self.create_typename(ftype)])
+                           for fname, ftype in ctype._fields_]))
+            ] + [
+                 ast.AnnAssign(target=ast.lvalue(fname), annotation=self.create_typename(ftype))
+                 for fname, ftype in ctype._fields_
+            ]
+        )
+
+    @staticmethod
+    def create_typedef_enum(name: str, ctype: CType):
+        return ast.ClassDef(
+            name=name, bases=[ast.rvalue('c_enum')],
+            body=[ast.assign(key, ast.Constant(value=val)) for key, val in ctype._members.items()]
+        )
+
+    def create_typedef_multibase(self, name: str, ctype: CType):
+        return ast.ClassDef(name=name, bases=list(map(self.create_typename, ctype.__bases__)), body=[ast.Pass()])
+
+    def create_typedef(self, name: str, ctype: CType) -> ast.stmt:
+        if isinstance(ctype, type):
+            if len(ctype.__bases__) == 1:
+                if (base := ctype.__bases__[0]) in self._createed_types:
+                    return self.create_typedef_predefined_base(name, base)
+                elif issubclass(ctype, ct.Structure):
+                    return self.create_typedef_struct(name, ctype)
+                elif issubclass(ctype, c_enum):
+                    return self.create_typedef_enum(name, ctype)
+            else:
+                return self.create_typedef_multibase(name, ctype)
+
+        return self.create_define(name, ctype)
+
+    def create_typedefs(self) -> tp.List[ast.stmt]:
+        self._createed_types = {}
+        self._createed_types = {
             typ: self.get_typename(typ) for typ in self.typer.fundamental_typemap.values()
             if isinstance(typ, type)
         }
 
-        return [(
-            isinstance(ctype, type) and (
-                len(ctype.__bases__) == 1 and (
-                    ctype.__bases__[0] in self._printed_types
-                    and ast.assign(name, self.print_typename(ctype.__bases__[0]))
-                    or issubclass(ctype, ct.Structure) and ast.ClassDef(
-                        name=name, bases=[ast.rvalue('ctypes.Structure')],
-                        body=[
-                                 ast.assign('_fields_', ast.List(
-                                     elts=[ast.Tuple(elts=[ast.Constant(value=fname), self.print_typename(ftype)])
-                                           for fname, ftype in ctype._fields_]))
-                             ] + [
-                                 ast.AnnAssign(target=ast.lvalue(fname), annotation=self.print_typename(ftype))
-                                 for fname, ftype in ctype._fields_
-                             ]
-                    )
-                    or issubclass(ctype, c_enum) and ast.ClassDef(
-                        name=name, bases=[ast.rvalue('c_enum')],
-                        body=[ast.assign(key, ast.Constant(value=val)) for key, val in ctype._members.items()]
-                    )
-                    or ast.assign(name, self.print_typename(ctype))
-                ) or ast.ClassDef(name=name, bases=list(map(self.print_typename, ctype.__bases__)),
-                                  body=[ast.Pass()])
-            ) or ast.assign(name, ast.Constant(value=ctype)),
-            self._printed_types.__setitem__(ctype, name)
-        )[0]
-            for pgxtype, ctype in self.typer.typemap.items()
-            if ctype not in ct.__dict__.values()
-            for name in [pgxtype.declaration.name if isinstance(pgxtype, d.declarated_t)else
-                         pgxtype.name if isinstance(pgxtype, d.declaration_t) else
-                         pgxtype._name]
-        ]
+        return [(self.create_typedef(name, ctype), self._createed_types.__setitem__(ctype, name))[0]
+                for pgxtype, ctype in self.typer.typemap.items()
+                if ctype not in ct.__dict__.values()
+                for name in [pgxtype.declaration.name if isinstance(pgxtype, d.declarated_t)else
+                             pgxtype.name if isinstance(pgxtype, d.declaration_t) else
+                             pgxtype._name]]
 
-    def print_functions(self, dllvar='__dll') -> tp.List[ast.stmt]:
+    def create_function(self, name: str, sig: inspect.Signature, body: tp.List[ast.stmt]) -> ast.FunctionDef:
+        return ast.FunctionDef(
+            name=name,
+            args=ast.arguments(args=[
+                ast.arg(arg=pname, annotation=self.create_typename(param.annotation))
+                for pname, param in sig.parameters.items()
+            ]),
+            returns=self.create_typename(sig.return_annotation),
+            body=body
+        )
+
+    def create_functions(self, dllvar='__dll') -> tp.List[ast.stmt]:
         return sum([
             [
                 ast.assign(f'{cfuncname}.argtypes', ast.Tuple(
-                    elts=list(self.print_typename(param.annotation) for param in sig.parameters.values())
+                    elts=list(self.create_typename(param.annotation) for param in sig.parameters.values())
                 )),
-                ast.FunctionDef(
-                    name=name, args=ast.arguments(args=[
-                        ast.arg(arg=pname, annotation=self.print_typename(param.annotation))
-                        for pname, param in sig.parameters.items()
-                    ]),
-                    returns=self.print_typename(sig.return_annotation), body=list(lstrip((
-                        docstring and ast.Expr(value=ast.Constant(value=self.format_docstring(docstring))),
-                        ast.Return(value=ast.call(cfuncname, [ast.rvalue(pname) for pname in sig.parameters.keys()]))
-                    ), lambda x: x is None))
-                )
+                self.create_function(name, sig, body=list(lstrip((
+                    docstring and ast.Expr(value=ast.Constant(value=self.format_docstring(docstring))),
+                    ast.Return(value=ast.call(cfuncname, [ast.rvalue(pname) for pname in sig.parameters.keys()]))
+                ), lambda x: x is None)))
             ]
             for name, sig in self.typer.functions.items()
             for cfuncname in [f'{dllvar}.{name}']
             for docstring in [self.doxml and self.doxml.get_docs(name)]
         ], [])
 
-    def print(self, file, dllname=None, dllvar='__dll'):
+    def create(self, dllname=None, dllvar='__dll'):
         dllname = dllname or os.path.splitext(self.headername)[0]
-        mod = ast.Module(body=[
+        return ast.Module(body=[
             ast.Import(names=[ast.alias(name='ctypes')]),
             ast.ImportFrom(module=f'{cutils.__name__}', names=[ast.alias(name='c_enum')]),
-            ast.assign('__dll', ast.call('ctypes.cdll.LoadLibrary', [ast.Constant(value=dllname)]))
-        ] + self.print_defines() + self.print_typedefs() + self.print_functions(dllvar=dllvar))
+            ast.assign('__dll',
+                       ast.call('ctypes.cdll.LoadLibrary', [ast.Constant(value=dllname)]))
+        ] + self.create_defines() + self.create_typedefs() + self.create_functions(dllvar=dllvar))
 
-        open(file, 'w').write(to_source(mod))
+    def print(self, file: tp.Union[str, tp.TextIO], dllname=None, dllvar='__dll'):
+        mod = self.create(dllname, dllvar)
+
+        # Ugly hack
+        with patch(source_repr.split_lines, '__defaults__', (65535,)):
+            (open(file, 'w') if isinstance(file, str) else file).write(to_source(mod))
         return mod

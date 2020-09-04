@@ -19,273 +19,569 @@ string = str
 constant = tp.Any
 
 
-def comprehension(*, target: expr, iter: expr, ifs: tp.List[expr], is_async: int) -> ast.comprehension:
-    return ast.comprehension(**locals())
+class Rehashable(type):
+    def __hash__(self):
+        return hash(self.__bases__[0])
 
+    def __eq__(self, other):
+        return other is self.__bases__[0] or super().__eq__(other)
 
-def arg(*, arg: identifier, annotation: tp.Optional[expr] = None,
-        type_comment: string = None) -> ast.arg:
-    return ast.arg(**locals())
 
+class comprehension(ast.comprehension, metaclass=Rehashable):
+    target: expr
+    iter: expr
+    ifs: tp.List[expr]
+    is_async: int
 
-def arguments(*, posonlyargs: tp.List[ast.arg] = empty, args: tp.List[ast.arg] = empty, vararg: tp.Optional[ast.arg] = None,
-              kwonlyargs: tp.List[ast.arg] = empty, kw_defaults: tp.List[expr] = empty, kwarg: tp.Optional[ast.arg] = None,
-              defaults: tp.List[expr] = empty) -> ast.arguments:
-    return ast.arguments(**locals())
+    def __init__(self, *, target: expr, iter: expr, ifs: tp.List[expr], is_async: int):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
 
-def keyword(*, arg: identifier = None, value: expr) -> ast.keyword:
-    return ast.keyword(**locals())
+class arg(ast.arg, metaclass=Rehashable):
+    arg: identifier
+    annotation: tp.Optional[expr]
+    type_comment: string = None
 
+    def __init__(self, *, arg: identifier, annotation: tp.Optional[expr] = None,
+                 type_comment: string = None):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
-def alias(*, name: identifier, asname: identifier = None) -> ast.alias:
-    return ast.alias(**locals())
 
+class arguments(ast.arguments, metaclass=Rehashable):
+    posonlyargs: tp.List[ast.arg]
+    args: tp.List[ast.arg]
+    vararg: tp.Optional[ast.arg]
+    kwonlyargs: tp.List[ast.arg]
+    kw_defaults: tp.List[expr]
+    kwarg: tp.Optional[ast.arg]
+    defaults: tp.List[expr] = empty
 
-def withitem(*, context_expr: expr, optional_vars: tp.Optional[expr] = None) -> ast.withitem:
-    return ast.withitem(**locals())
+    def __init__(self, *, posonlyargs: tp.List[ast.arg] = empty, args: tp.List[ast.arg] = empty,
+                 vararg: tp.Optional[ast.arg] = None,
+                 kwonlyargs: tp.List[ast.arg] = empty, kw_defaults: tp.List[expr] = empty,
+                 kwarg: tp.Optional[ast.arg] = None,
+                 defaults: tp.List[expr] = empty):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
 
-def Module(*, body: tp.List[stmt], type_ignores: tp.List[ast.type_ignore] = empty) -> ast.Module:
-    return ast.Module(**locals())
+class keyword(ast.keyword, metaclass=Rehashable):
+    arg: identifier
+    value: expr
 
+    def __init__(self, *, arg: identifier = None, value: expr):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
-def Interactive(*, body: tp.List[stmt]) -> ast.Interactive:
-    return ast.Interactive(**locals())
 
+class alias(ast.alias, metaclass=Rehashable):
+    name: identifier
+    asname: identifier = None
 
-def Expression(*, body: expr) -> ast.Expression:
-    return ast.Expression(**locals())
+    def __init__(self, *, name: identifier, asname: identifier = None):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
 
-def FunctionType(*, argtypes: tp.List[expr], returns: expr) -> ast.FunctionType:
-    return ast.FunctionType(**locals())
+class withitem(ast.withitem, metaclass=Rehashable):
+    context_expr: expr
+    optional_vars: tp.Optional[expr] = None
 
+    def __init__(self, *, context_expr: expr, optional_vars: tp.Optional[expr] = None):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
-def Suite(*, body: tp.List[stmt]) -> ast.Suite:
-    return ast.Suite(**locals())
 
+class Module(ast.Module, metaclass=Rehashable):
+    body: tp.List[stmt]
+    type_ignores: tp.List[ast.type_ignore] = empty
 
-def FunctionDef(*, name: identifier, args: ast.arguments, body: tp.List[stmt], decorator_list: tp.List[expr] = empty,
-                returns: tp.Optional[expr] = None, type_comment: string = None) -> ast.FunctionDef:
-    return ast.FunctionDef(**locals())
+    def __init__(self, *, body: tp.List[stmt], type_ignores: tp.List[ast.type_ignore] = empty):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
 
-def AsyncFunctionDef(*, name: identifier, args: ast.arguments, body: tp.List[stmt],
-                     decorator_list: tp.List[expr], returns: tp.Optional[expr] = None,
-                     type_comment: string = None) -> ast.AsyncFunctionDef:
-    return ast.AsyncFunctionDef(**locals())
+class Interactive(ast.Interactive, metaclass=Rehashable):
+    body: tp.List[stmt]
 
+    def __init__(self, *, body: tp.List[stmt]):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
-def ClassDef(*, name: identifier, body: tp.List[stmt], bases: tp.List[expr] = empty,
-             keywords: tp.List[ast.keyword] = empty, decorator_list: tp.List[expr] = empty) -> ast.ClassDef:
-    return ast.ClassDef(**locals())
 
+class Expression(ast.Expression, metaclass=Rehashable):
+    body: expr
 
-def Return(*, value: tp.Optional[expr] = None) -> ast.Return:
-    return ast.Return(**locals())
+    def __init__(self, *, body: expr):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
 
-def Delete(*, targets: tp.List[expr]) -> ast.Delete:
-    return ast.Delete(**locals())
+class FunctionType(ast.FunctionType, metaclass=Rehashable):
+    argtypes: tp.List[expr]
+    returns: expr
 
+    def __init__(self, *, argtypes: tp.List[expr], returns: expr):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
-def Assign(*, targets: tp.List[expr], value: expr, type_comment: string = None) -> ast.Assign:
-    return ast.Assign(**locals())
 
+class Suite(ast.Suite, metaclass=Rehashable):
+    body: tp.List[stmt]
 
-def AugAssign(*, target: expr, op: ast.operator, value: expr) -> ast.AugAssign:
-    return ast.AugAssign(**locals())
+    def __init__(self, *, body: tp.List[stmt]):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
 
-def AnnAssign(*, target: expr, annotation: expr, value: tp.Optional[expr] = None, simple: int = 1) -> ast.AnnAssign:
-    return ast.AnnAssign(**locals())
+class FunctionDef(ast.FunctionDef, metaclass=Rehashable):
+    name: identifier
+    args: ast.arguments
+    body: tp.List[stmt]
+    decorator_list: tp.List[expr]
+    returns: tp.Optional[expr]
+    type_comment: string = None
 
+    def __init__(self, *, name: identifier, args: ast.arguments, body: tp.List[stmt],
+                 decorator_list: tp.List[expr] = empty, returns: tp.Optional[expr] = None, type_comment: string = None):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
-def For(*, target: expr, iter: expr, body: tp.List[stmt], orelse: tp.List[stmt],
-        type_comment: string = None) -> ast.For:
-    return ast.For(**locals())
 
+class AsyncFunctionDef(ast.AsyncFunctionDef, metaclass=Rehashable):
+    name: identifier
+    args: ast.arguments
+    body: tp.List[stmt]
+    decorator_list: tp.List[expr]
+    returns: tp.Optional[expr]
+    type_comment: string = None
 
-def AsyncFor(*, target: expr, iter: expr, body: tp.List[stmt], orelse: tp.List[stmt],
-             type_comment: string = None) -> ast.AsyncFor:
-    return ast.AsyncFor(**locals())
+    def __init__(self, *, name: identifier, args: ast.arguments, body: tp.List[stmt],
+                 decorator_list: tp.List[expr], returns: tp.Optional[expr] = None,
+                 type_comment: string = None):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
 
-def While(*, test: expr, body: tp.List[stmt], orelse: tp.List[stmt]) -> ast.While:
-    return ast.While(**locals())
+class ClassDef(ast.ClassDef, metaclass=Rehashable):
+    name: identifier
+    body: tp.List[stmt]
+    bases: tp.List[expr]
+    keywords: tp.List[ast.keyword]
+    decorator_list: tp.List[expr] = empty
 
+    def __init__(self, *, name: identifier, body: tp.List[stmt], bases: tp.List[expr] = empty,
+                 keywords: tp.List[ast.keyword] = empty, decorator_list: tp.List[expr] = empty):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
-def If(*, test: expr, body: tp.List[stmt], orelse: tp.List[stmt]) -> ast.If:
-    return ast.If(**locals())
 
+class Return(ast.Return, metaclass=Rehashable):
+    value: tp.Optional[expr] = None
 
-def With(*, items: tp.List[ast.withitem], body: tp.List[stmt], type_comment: string = None) -> ast.With:
-    return ast.With(**locals())
+    def __init__(self, *, value: tp.Optional[expr] = None):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
 
-def AsyncWith(*, items: tp.List[ast.withitem], body: tp.List[stmt], type_comment: string = None) -> ast.AsyncWith:
-    return ast.AsyncWith(**locals())
+class Delete(ast.Delete, metaclass=Rehashable):
+    targets: tp.List[expr]
 
+    def __init__(self, *, targets: tp.List[expr]):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
-def Raise(*, exc: tp.Optional[expr] = None, cause: tp.Optional[expr] = None) -> ast.Raise:
-    return ast.Raise(**locals())
 
+class Assign(ast.Assign, metaclass=Rehashable):
+    targets: tp.List[expr]
+    value: expr
+    type_comment: string = None
 
-def Try(*, body: tp.List[stmt], handlers: tp.List[ast.excepthandler], orelse: tp.List[stmt],
-        finalbody: tp.List[stmt]) -> ast.Try:
-    return ast.Try(**locals())
+    def __init__(self, *, targets: tp.List[expr], value: expr, type_comment: string = None):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
 
-def Assert(*, test: expr, msg: tp.Optional[expr] = None) -> ast.Assert:
-    return ast.Assert(**locals())
+class AugAssign(ast.AugAssign, metaclass=Rehashable):
+    target: expr
+    op: ast.operator
+    value: expr
 
+    def __init__(self, *, target: expr, op: ast.operator, value: expr):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
-def Import(*, names: tp.List[ast.alias]) -> ast.Import:
-    return ast.Import(**locals())
 
+class AnnAssign(ast.AnnAssign, metaclass=Rehashable):
+    target: expr
+    annotation: expr
+    value: tp.Optional[expr]
+    simple: int = 1
 
-def ImportFrom(*, module: identifier = None, names: tp.List[ast.alias], level: int = 0) -> ast.ImportFrom:
-    return ast.ImportFrom(**locals())
+    def __init__(self, *, target: expr, annotation: expr, value: tp.Optional[expr] = None, simple: int = 1):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
 
-def Global(*, names: tp.List[identifier]) -> ast.Global:
-    return ast.Global(**locals())
+class For(ast.For, metaclass=Rehashable):
+    target: expr
+    iter: expr
+    body: tp.List[stmt]
+    orelse: tp.List[stmt]
+    type_comment: string = None
 
+    def __init__(self, *, target: expr, iter: expr, body: tp.List[stmt], orelse: tp.List[stmt],
+                 type_comment: string = None):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
-def Nonlocal(*, names: tp.List[identifier]) -> ast.Nonlocal:
-    return ast.Nonlocal(**locals())
 
+class AsyncFor(ast.AsyncFor, metaclass=Rehashable):
+    target: expr
+    iter: expr
+    body: tp.List[stmt]
+    orelse: tp.List[stmt]
+    type_comment: string = None
 
-def Expr(*, value: expr) -> ast.Expr:
-    return ast.Expr(**locals())
+    def __init__(self, *, target: expr, iter: expr, body: tp.List[stmt], orelse: tp.List[stmt],
+                 type_comment: string = None):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
 
-def BoolOp(*, op: ast.boolop, values: tp.List[expr]) -> ast.BoolOp:
-    return ast.BoolOp(**locals())
+class While(ast.While, metaclass=Rehashable):
+    test: expr
+    body: tp.List[stmt]
+    orelse: tp.List[stmt]
 
+    def __init__(self, *, test: expr, body: tp.List[stmt], orelse: tp.List[stmt]):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
-def NamedExpr(*, target: expr, value: expr) -> ast.NamedExpr:
-    return ast.NamedExpr(**locals())
 
+class If(ast.If, metaclass=Rehashable):
+    test: expr
+    body: tp.List[stmt]
+    orelse: tp.List[stmt]
 
-def BinOp(*, left: expr, op: ast.operator, right: expr) -> ast.BinOp:
-    return ast.BinOp(**locals())
+    def __init__(self, *, test: expr, body: tp.List[stmt], orelse: tp.List[stmt]):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
 
-def UnaryOp(*, op: ast.unaryop, operand: expr) -> ast.UnaryOp:
-    return ast.UnaryOp(**locals())
+class With(ast.With, metaclass=Rehashable):
+    items: tp.List[ast.withitem]
+    body: tp.List[stmt]
+    type_comment: string = None
 
+    def __init__(self, *, items: tp.List[ast.withitem], body: tp.List[stmt], type_comment: string = None):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
-def Lambda(*, args: ast.arguments, body: expr) -> ast.Lambda:
-    return ast.Lambda(**locals())
 
+class AsyncWith(ast.AsyncWith, metaclass=Rehashable):
+    items: tp.List[ast.withitem]
+    body: tp.List[stmt]
+    type_comment: string = None
 
-def IfExp(*, test: expr, body: expr, orelse: expr) -> ast.IfExp:
-    return ast.IfExp(**locals())
+    def __init__(self, *, items: tp.List[ast.withitem], body: tp.List[stmt], type_comment: string = None):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
 
-def Dict(*, keys: tp.List[expr], values: tp.List[expr]) -> ast.Dict:
-    return ast.Dict(**locals())
+class Raise(ast.Raise, metaclass=Rehashable):
+    exc: tp.Optional[expr]
+    cause: tp.Optional[expr] = None
 
+    def __init__(self, *, exc: tp.Optional[expr] = None, cause: tp.Optional[expr] = None):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
-def Set(*, elts: tp.List[expr]) -> ast.Set:
-    return ast.Set(**locals())
 
+class Try(ast.Try, metaclass=Rehashable):
+    body: tp.List[stmt]
+    handlers: tp.List[ast.excepthandler]
+    orelse: tp.List[stmt]
+    finalbody: tp.List[stmt]
 
-def ListComp(*, elt: expr, generators: tp.List[ast.comprehension]) -> ast.ListComp:
-    return ast.ListComp(**locals())
+    def __init__(self, *, body: tp.List[stmt], handlers: tp.List[ast.excepthandler], orelse: tp.List[stmt],
+                 finalbody: tp.List[stmt]):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
 
-def SetComp(*, elt: expr, generators: tp.List[ast.comprehension]) -> ast.SetComp:
-    return ast.SetComp(**locals())
+class Assert(ast.Assert, metaclass=Rehashable):
+    test: expr
+    msg: tp.Optional[expr] = None
 
+    def __init__(self, *, test: expr, msg: tp.Optional[expr] = None):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
-def DictComp(*, key: expr, value: expr, generators: tp.List[ast.comprehension]) -> ast.DictComp:
-    return ast.DictComp(**locals())
 
+class Import(ast.Import, metaclass=Rehashable):
+    names: tp.List[ast.alias]
 
-def GeneratorExp(*, elt: expr, generators: tp.List[ast.comprehension]) -> ast.GeneratorExp:
-    return ast.GeneratorExp(**locals())
+    def __init__(self, *, names: tp.List[ast.alias]):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
 
-def Await(*, value: expr) -> ast.Await:
-    return ast.Await(**locals())
+class ImportFrom(ast.ImportFrom, metaclass=Rehashable):
+    module: identifier
+    names: tp.List[ast.alias]
+    level: int = 0
 
+    def __init__(self, *, module: identifier = None, names: tp.List[ast.alias], level: int = 0):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
-def Yield(*, value: tp.Optional[expr] = None) -> ast.Yield:
-    return ast.Yield(**locals())
 
+class Global(ast.Global, metaclass=Rehashable):
+    names: tp.List[identifier]
 
-def YieldFrom(*, value: expr) -> ast.YieldFrom:
-    return ast.YieldFrom(**locals())
+    def __init__(self, *, names: tp.List[identifier]):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
 
-def Compare(*, left: expr, ops: tp.List[ast.cmpop], comparators: tp.List[expr]) -> ast.Compare:
-    return ast.Compare(**locals())
+class Nonlocal(ast.Nonlocal, metaclass=Rehashable):
+    names: tp.List[identifier]
 
+    def __init__(self, *, names: tp.List[identifier]):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
-def Call(*, func: expr, args: tp.List[expr] = empty, keywords: tp.List[ast.keyword] = empty) -> ast.Call:
-    return ast.Call(**locals())
 
+class Expr(ast.Expr, metaclass=Rehashable):
+    value: expr
 
-def FormattedValue(*, value: expr, conversion: int = None,
-                   format_spec: tp.Optional[expr] = None) -> ast.FormattedValue:
-    return ast.FormattedValue(**locals())
+    def __init__(self, *, value: expr):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
 
-def JoinedStr(*, values: tp.List[expr]) -> ast.JoinedStr:
-    return ast.JoinedStr(**locals())
+class BoolOp(ast.BoolOp, metaclass=Rehashable):
+    op: ast.boolop
+    values: tp.List[expr]
 
+    def __init__(self, *, op: ast.boolop, values: tp.List[expr]):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
-def Constant(*, value: constant, kind: string = None) -> ast.Constant:
-    return ast.Constant(**locals())
 
+class NamedExpr(ast.NamedExpr, metaclass=Rehashable):
+    target: expr
+    value: expr
 
-def Attribute(*, value: expr, attr: identifier, ctx: expr_context) -> ast.Attribute:
-    return ast.Attribute(**locals())
+    def __init__(self, *, target: expr, value: expr):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
 
-def Subscript(*, value: expr, slice: slice, ctx: expr_context) -> ast.Subscript:
-    return ast.Subscript(**locals())
+class BinOp(ast.BinOp, metaclass=Rehashable):
+    left: expr
+    op: ast.operator
+    right: expr
 
+    def __init__(self, *, left: expr, op: ast.operator, right: expr):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
-def Starred(*, value: expr, ctx: expr_context) -> ast.Starred:
-    return ast.Starred(**locals())
 
+class UnaryOp(ast.UnaryOp, metaclass=Rehashable):
+    op: ast.unaryop
+    operand: expr
 
-def Name(*, id: identifier, ctx: expr_context) -> ast.Name:
-    return ast.Name(**locals())
+    def __init__(self, *, op: ast.unaryop, operand: expr):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
 
-def List(*, elts: tp.List[expr], ctx: expr_context = Load()) -> ast.List:
-    return ast.List(**locals())
+class Lambda(ast.Lambda, metaclass=Rehashable):
+    args: ast.arguments
+    body: expr
 
+    def __init__(self, *, args: ast.arguments, body: expr):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
-def Tuple(*, elts: tp.List[expr], ctx: expr_context = Load()) -> ast.Tuple:
-    return ast.Tuple(**locals())
 
+class IfExp(ast.IfExp, metaclass=Rehashable):
+    test: expr
+    body: expr
+    orelse: expr
 
-def Slice(*, lower: tp.Optional[expr] = None, upper: tp.Optional[expr] = None,
-          step: tp.Optional[expr] = None) -> ast.Slice:
-    return ast.Slice(**locals())
+    def __init__(self, *, test: expr, body: expr, orelse: expr):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
 
-def ExtSlice(*, dims: tp.List[slice]) -> ast.ExtSlice:
-    return ast.ExtSlice(**locals())
+class Dict(ast.Dict, metaclass=Rehashable):
+    keys: tp.List[expr]
+    values: tp.List[expr]
 
+    def __init__(self, *, keys: tp.List[expr], values: tp.List[expr]):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
-def Index(*, value: expr) -> ast.Index:
-    return ast.Index(**locals())
 
+class Set(ast.Set, metaclass=Rehashable):
+    elts: tp.List[expr]
 
-def ExceptHandler(*, type: tp.Optional[expr] = None, name: identifier = None,
-                  body: tp.List[stmt]) -> ast.ExceptHandler:
-    return ast.ExceptHandler(**locals())
+    def __init__(self, *, elts: tp.List[expr]):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
 
-def TypeIgnore(*, lineno: int, tag: string) -> ast.TypeIgnore:
-    return ast.TypeIgnore(**locals())
+class ListComp(ast.ListComp, metaclass=Rehashable):
+    elt: expr
+    generators: tp.List[ast.comprehension]
+
+    def __init__(self, *, elt: expr, generators: tp.List[ast.comprehension]):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
+
+
+class SetComp(ast.SetComp, metaclass=Rehashable):
+    elt: expr
+    generators: tp.List[ast.comprehension]
+
+    def __init__(self, *, elt: expr, generators: tp.List[ast.comprehension]):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
+
+
+class DictComp(ast.DictComp, metaclass=Rehashable):
+    key: expr
+    value: expr
+    generators: tp.List[ast.comprehension]
+
+    def __init__(self, *, key: expr, value: expr, generators: tp.List[ast.comprehension]):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
+
+
+class GeneratorExp(ast.GeneratorExp, metaclass=Rehashable):
+    elt: expr
+    generators: tp.List[ast.comprehension]
+
+    def __init__(self, *, elt: expr, generators: tp.List[ast.comprehension]):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
+
+
+class Await(ast.Await, metaclass=Rehashable):
+    value: expr
+
+    def __init__(self, *, value: expr):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
+
+
+class Yield(ast.Yield, metaclass=Rehashable):
+    value: tp.Optional[expr] = None
+
+    def __init__(self, *, value: tp.Optional[expr] = None):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
+
+
+class YieldFrom(ast.YieldFrom, metaclass=Rehashable):
+    value: expr
+
+    def __init__(self, *, value: expr):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
+
+
+class Compare(ast.Compare, metaclass=Rehashable):
+    left: expr
+    ops: tp.List[ast.cmpop]
+    comparators: tp.List[expr]
+
+    def __init__(self, *, left: expr, ops: tp.List[ast.cmpop], comparators: tp.List[expr]):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
+
+
+class Call(ast.Call, metaclass=Rehashable):
+    func: expr
+    args: tp.List[expr]
+    keywords: tp.List[ast.keyword] = empty
+
+    def __init__(self, *, func: expr, args: tp.List[expr] = empty, keywords: tp.List[ast.keyword] = empty):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
+
+
+class FormattedValue(ast.FormattedValue, metaclass=Rehashable):
+    value: expr
+    conversion: int
+    format_spec: tp.Optional[expr] = None
+
+    def __init__(self, *, value: expr, conversion: int = None,
+                 format_spec: tp.Optional[expr] = None):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
+
+
+class JoinedStr(ast.JoinedStr, metaclass=Rehashable):
+    values: tp.List[expr]
+
+    def __init__(self, *, values: tp.List[expr]):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
+
+
+class Constant(ast.Constant, metaclass=Rehashable):
+    value: constant
+    kind: string = None
+
+    def __init__(self, *, value: constant, kind: string = None):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
+
+
+class Attribute(ast.Attribute, metaclass=Rehashable):
+    value: expr
+    attr: identifier
+    ctx: expr_context
+
+    def __init__(self, *, value: expr, attr: identifier, ctx: expr_context):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
+
+
+class Subscript(ast.Subscript, metaclass=Rehashable):
+    value: expr
+    slice: slice
+    ctx: expr_context
+
+    def __init__(self, *, value: expr, slice: slice, ctx: expr_context):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
+
+
+class Starred(ast.Starred, metaclass=Rehashable):
+    value: expr
+    ctx: expr_context
+
+    def __init__(self, *, value: expr, ctx: expr_context):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
+
+
+class Name(ast.Name, metaclass=Rehashable):
+    id: identifier
+    ctx: expr_context
+
+    def __init__(self, *, id: identifier, ctx: expr_context):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
+
+
+class List(ast.List, metaclass=Rehashable):
+    elts: tp.List[expr]
+    ctx: expr_context = Load()
+
+    def __init__(self, *, elts: tp.List[expr], ctx: expr_context = Load()):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
+
+
+class Tuple(ast.Tuple, metaclass=Rehashable):
+    elts: tp.List[expr]
+    ctx: expr_context = Load()
+
+    def __init__(self, *, elts: tp.List[expr], ctx: expr_context = Load()):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
+
+
+class Slice(ast.Slice, metaclass=Rehashable):
+    lower: tp.Optional[expr]
+    upper: tp.Optional[expr]
+    step: tp.Optional[expr] = None
+
+    def __init__(self, *, lower: tp.Optional[expr] = None, upper: tp.Optional[expr] = None,
+                 step: tp.Optional[expr] = None):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
+
+
+class ExtSlice(ast.ExtSlice, metaclass=Rehashable):
+    dims: tp.List[slice]
+
+    def __init__(self, *, dims: tp.List[slice]):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
+
+
+class Index(ast.Index, metaclass=Rehashable):
+    value: expr
+
+    def __init__(self, *, value: expr):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
+
+
+class ExceptHandler(ast.ExceptHandler, metaclass=Rehashable):
+    type: tp.Optional[expr]
+    name: identifier
+    body: tp.List[stmt]
+
+    def __init__(self, *, type: tp.Optional[expr] = None, name: identifier = None,
+                 body: tp.List[stmt]):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
+
+
+class TypeIgnore(ast.TypeIgnore, metaclass=Rehashable):
+    lineno: int
+    tag: string
+
+    def __init__(self, *, lineno: int, tag: string):
+        super().__init__(**{key: value for key, value in locals().items() if key not in ('self', '__class__')})
 
 
 _compile = compile
@@ -308,11 +604,11 @@ def dotted_name(name: str, ctx: expr_context) -> expr:
     return res
 
 
-def lvalue(name: str) -> Name:
+def lvalue(name: str) -> expr:
     return dotted_name(name, Store())
 
 
-def rvalue(name: str) -> Name:
+def rvalue(name: str) -> expr:
     return dotted_name(name, Load())
 
 

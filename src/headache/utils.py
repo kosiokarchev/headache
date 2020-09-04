@@ -1,4 +1,5 @@
 import typing as tp
+from contextlib import contextmanager
 from functools import partial
 from itertools import chain, islice
 
@@ -39,3 +40,17 @@ def iterrepr(iterable: tp.Iterable[str], noparen=False):
 
 class AllTrialsFailedError(Exception):
     pass
+
+
+@contextmanager
+def patch(var, prop_or_index, value, str_is_index=False):
+    byprop = isinstance(prop_or_index, str) and not str_is_index
+    getter = getattr(var, byprop and '__getattribute__' or '__getitem__')
+    setter = getattr(var, byprop and '__setattr__' or '__setitem__')
+
+    cache = getter(prop_or_index)
+    setter(prop_or_index, value)
+    try:
+        yield
+    finally:
+        setter(prop_or_index, cache)
